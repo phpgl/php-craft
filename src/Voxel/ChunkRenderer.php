@@ -5,6 +5,7 @@ namespace App\Voxel;
 use VISU\ECS\EntitiesInterface;
 use VISU\Geo\Transform;
 use VISU\Graphics\BasicVertexArray;
+use VISU\Graphics\GLState;
 use VISU\Graphics\Rendering\Pass\CallbackPass;
 use VISU\Graphics\Rendering\Pass\CameraData;
 use VISU\Graphics\Rendering\PipelineContainer;
@@ -13,14 +14,23 @@ use VISU\Graphics\Rendering\RenderPass;
 use VISU\Graphics\Rendering\RenderPipeline;
 use VISU\Graphics\Rendering\Resource\RenderTargetResource;
 use VISU\Graphics\ShaderCollection;
+use VISU\Graphics\Texture;
+use VISU\Graphics\TextureOptions;
 
 class ChunkRenderer
 {
+    private Texture $texture;
+
     public function __construct(
+        private GLState $gl,
         private ShaderCollection $shaders,
     )
     {
-        
+        $this->texture = new Texture($this->gl, 'blocks');
+        $textureOptions = new TextureOptions;
+        $textureOptions->minFilter = GL_NEAREST;
+        $textureOptions->magFilter = GL_NEAREST;
+        $this->texture->loadFromFile(VISU_PATH_RESOURCES . '/sprites/textures.png', $textureOptions);
     }
 
     /**
@@ -60,6 +70,9 @@ class ChunkRenderer
                 $shader->use();
                 $shader->setUniformMat4('projection', false, $cameraData->projection);
                 $shader->setUniformMat4('view', false, $cameraData->view);
+
+                $this->texture->bind(GL_TEXTURE0);
+                $shader->setUniform1i('u_texture', 0);
 
                 $chunkAllocator = $entities->getSingleton(ChunkAllocator::class);
                 

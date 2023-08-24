@@ -2,9 +2,6 @@
 
 namespace App\System;
 
-use App\Component\ExampleImage;
-use App\Renderer\BackgroundRenderer;
-use App\Renderer\ExampleImageRenderer;
 use App\Voxel\ChunkRenderer;
 use GL\Math\{GLM, Quat, Vec2, Vec3};
 use VISU\ECS\EntitiesInterface;
@@ -21,16 +18,6 @@ use VISU\Graphics\TextureOptions;
 
 class RenderingSystem implements SystemInterface
 {
-    /**
-     * Background renderer
-     */
-    private BackgroundRenderer $backgroundRenderer;
-
-    /**
-     * The example image renderer
-     */
-    private ExampleImageRenderer $exampleImageRenderer;
-
     /**
      * Fullscreen Texture Debug Renderer
      */
@@ -49,10 +36,8 @@ class RenderingSystem implements SystemInterface
         private ShaderCollection $shaders
     )
     {
-        $this->backgroundRenderer = new BackgroundRenderer($this->gl, $this->shaders);
-        $this->exampleImageRenderer = new ExampleImageRenderer($this->gl, $this->shaders);
         $this->fullscreenRenderer = new FullscreenTextureRenderer($this->gl);
-        $this->voxelRenderer = new ChunkRenderer($this->shaders);
+        $this->voxelRenderer = new ChunkRenderer($this->gl, $this->shaders);
     }
     
     /**

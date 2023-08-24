@@ -83,7 +83,7 @@ class ChunkAllocator
         }
 
         $this->chunks[$key] = new Chunk(...explode(':', $key));
-        $this->chunkVAOs[$key] = new BasicVertexArray($this->gl, [3, 3, 2]);
+        $this->chunkVAOs[$key] = new BasicVertexArray($this->gl, [3, 3, 2, 1]);
 
         $this->chunks[$key]->fillVAOWithGeometry($this->chunkVAOs[$key]);
 

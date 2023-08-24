@@ -15,6 +15,20 @@ class Chunk
     private ByteBuffer $blockTypes;
     private ByteBuffer $blockVisibility;
 
+    const BLOCK_TYPE_AIR = 0;
+    const BLOCK_TYPE_DIRT = 1;
+    const BLOCK_TYPE_GRASS = 2;
+
+    /**
+     * Block textures foreach face of each block type
+     * @var array
+     */
+    private array $blockTextures = [
+        self::BLOCK_TYPE_AIR => [0, 0, 0, 0, 0, 0],
+        self::BLOCK_TYPE_DIRT => [2, 2, 2, 2, 2, 2],
+        self::BLOCK_TYPE_GRASS => [1, 1, 1, 1, 0, 2],
+    ];
+
     public function __construct(
         public readonly int $x,
         public readonly int $y,
@@ -27,6 +41,15 @@ class Chunk
         $this->blockTypes->fill(self::CHUNK_SIZE ** 3, 0);
         $this->blockVisibility->fill(self::CHUNK_SIZE ** 3, 0);
 
+        // convert all the block textures to floats
+        // because we will store them in a float buffer 
+        // and we don't want to convert them every time we render
+        foreach ($this->blockTextures as $blockType => $textures) {
+            foreach ($textures as $face => $texture) {
+                $this->blockTextures[$blockType][$face] = (float) $texture;
+            }
+        }
+
         // randomly enable/disable blocks
         for ($i = 0; $i < self::CHUNK_SIZE ** 3; $i++) {
             $this->blockVisibility[$i] = (int) rand(0, 1);
@@ -38,6 +61,8 @@ class Chunk
         for ($x = 0; $x < self::CHUNK_SIZE; $x++) {
             for ($y = 0; $y < self::CHUNK_SIZE; $y++) {
                 for ($z = 0; $z < self::CHUNK_SIZE; $z++) {
+
+                    $this->blockTypes[$x + $y * self::CHUNK_SIZE + $z * self::CHUNK_SIZE ** 2] = (int) mt_rand(1, 2);
 
                     $absoluteX = $this->x * self::CHUNK_SIZE + $x;
                     $absoluteY = $this->z * self::CHUNK_SIZE + $z;
@@ -59,11 +84,11 @@ class Chunk
         // Unfolded cube
         //         *---*       F = Front
         //         | U |       B = Back
-        // *---*---*---*---*   U = Up
-        // | F | L | B | R |   D = Down
         // *---*---*---*---*   L = Left
-        //         | D |       R = Right
-        //         *---*
+        // | F | L | B | R |   R = Right
+        // *---*---*---*---*   U = Up
+        //         | D |       D = Down
+        //         *---*        
 
         // our coordinate system is 
         // +x = right     -x = left
@@ -80,10 +105,25 @@ class Chunk
         // can never be larger than 16, so we could just store them in 3 bytes.
         // but for the sake of clarity we will just store the full normals here.
 
+        $blockType = 0;
+        $blockVisibility = 0;
+        $blockVisibilityFront = 0;
+        $blockVisibilityBack = 0;
+        $blockVisibilityLeft = 0;
+        $blockVisibilityRight = 0;
+        $blockVisibilityUp = 0;
+        $blockVisibilityDown = 0;
+        $frontFaceTexture = 0.0;
+        $backFaceTexture = 0.0;
+        $leftFaceTexture = 0.0;
+        $rightFaceTexture = 0.0;
+        $upFaceTexture = 0.0;
+        $downFaceTexture = 0.0;
+
         for ($x = 0; $x < self::CHUNK_SIZE; $x++) {
             for ($y = 0; $y < self::CHUNK_SIZE; $y++) {
                 for ($z = 0; $z < self::CHUNK_SIZE; $z++) {
-                    $blockType = $this->blockTypes[$x + $y * self::CHUNK_SIZE + $z * self::CHUNK_SIZE ** 2];
+                    $blockType = (float) $this->blockTypes[$x + $y * self::CHUNK_SIZE + $z * self::CHUNK_SIZE ** 2];
                     $blockVisibility = $this->blockVisibility[$x + $y * self::CHUNK_SIZE + $z * self::CHUNK_SIZE ** 2];
 
                     $blockVisibilityFront = $this->blockVisibility[$x + $y * self::CHUNK_SIZE + ($z + 1) * self::CHUNK_SIZE ** 2];
@@ -92,6 +132,13 @@ class Chunk
                     $blockVisibilityRight = $this->blockVisibility[($x + 1) + $y * self::CHUNK_SIZE + $z * self::CHUNK_SIZE ** 2];
                     $blockVisibilityUp = $this->blockVisibility[$x + ($y + 1) * self::CHUNK_SIZE + $z * self::CHUNK_SIZE ** 2];
                     $blockVisibilityDown = $this->blockVisibility[$x + ($y - 1) * self::CHUNK_SIZE + $z * self::CHUNK_SIZE ** 2];
+
+                    $frontFaceTexture = $this->blockTextures[$blockType][0];
+                    $backFaceTexture = $this->blockTextures[$blockType][1];
+                    $leftFaceTexture = $this->blockTextures[$blockType][2];
+                    $rightFaceTexture = $this->blockTextures[$blockType][3];
+                    $upFaceTexture = $this->blockTextures[$blockType][4];
+                    $downFaceTexture = $this->blockTextures[$blockType][5];
 
                     // special cases for edges
                     if ($x === 0) {
@@ -123,72 +170,72 @@ class Chunk
                     // front face (z+) 2 triangles
                     if ($blockVisibilityFront !== 1) {
                         $floatBuffer->pushArray([
-                            $blockX +  1.0, $blockY + -1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-                            $blockX +  1.0, $blockY +  1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-                            $blockX +  1.0, $blockY +  1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-                            $blockX + -1.0, $blockY +  1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, $frontFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, $frontFaceTexture,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, $frontFaceTexture,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, $frontFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, $frontFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, $frontFaceTexture,
                         ]);
                     } 
 
                     // back face (z-) 2 triangles
                     if ($blockVisibilityBack !== 1) {
                         $floatBuffer->pushArray([
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + -1.0, 0.0, 0.0, -1.0, 0.0, 0.0,
-                            $blockX + -1.0, $blockY +  1.0, $blockZ + -1.0, 0.0, 0.0, -1.0, 0.0, 1.0,
-                            $blockX +  1.0, $blockY + -1.0, $blockZ + -1.0, 0.0, 0.0, -1.0, 1.0, 0.0,
-                            $blockX +  1.0, $blockY + -1.0, $blockZ + -1.0, 0.0, 0.0, -1.0, 1.0, 0.0,
-                            $blockX + -1.0, $blockY +  1.0, $blockZ + -1.0, 0.0, 0.0, -1.0, 0.0, 1.0,
-                            $blockX +  1.0, $blockY +  1.0, $blockZ + -1.0, 0.0, 0.0, -1.0, 1.0, 1.0,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, $backFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, $backFaceTexture,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 0.0, 0.0, 0.0, -1.0, 1.0, 1.0, $backFaceTexture,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 0.0, 0.0, 0.0, -1.0, 1.0, 1.0, $backFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, $backFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, $backFaceTexture,
                         ]);   
                     }
 
                     // left face (x-) 2 triangles
                     if ($blockVisibilityLeft !== 1) {
                         $floatBuffer->pushArray([
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + -1.0, -1.0, 0.0, 0.0, 0.0, 0.0,
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + 1.0, -1.0, 0.0, 0.0, 1.0, 0.0,
-                            $blockX + -1.0, $blockY + 1.0, $blockZ + 1.0, -1.0, 0.0, 0.0, 1.0, 1.0,
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + -1.0, -1.0, 0.0, 0.0, 0.0, 0.0,
-                            $blockX + -1.0, $blockY + 1.0, $blockZ + 1.0, -1.0, 0.0, 0.0, 1.0, 1.0,
-                            $blockX + -1.0, $blockY + 1.0, $blockZ + -1.0, -1.0, 0.0, 0.0, 0.0, 1.0,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, $leftFaceTexture,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 1.0, -1.0, 0.0, 0.0, 1.0, 1.0, $leftFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 1.0, -1.0, 0.0, 0.0, 1.0, 0.0, $leftFaceTexture,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, $leftFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 1.0, -1.0, 0.0, 0.0, 1.0, 0.0, $leftFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, $leftFaceTexture,
                         ]);
                     }
 
                     // right face (x+) 2 triangles
                     if ($blockVisibilityRight !== 1) {
                         $floatBuffer->pushArray([
-                            $blockX + 1.0, $blockY + -1.0, $blockZ + -1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-                            $blockX + 1.0, $blockY + 1.0, $blockZ + -1.0, 1.0, 0.0, 0.0, 1.0, 0.0,
-                            $blockX + 1.0, $blockY + -1.0, $blockZ + 1.0, 1.0, 0.0, 0.0, 0.0, 1.0,
-                            $blockX + 1.0, $blockY + -1.0, $blockZ + 1.0, 1.0, 0.0, 0.0, 0.0, 1.0,
-                            $blockX + 1.0, $blockY + 1.0, $blockZ + -1.0, 1.0, 0.0, 0.0, 1.0, 0.0,
-                            $blockX + 1.0, $blockY + 1.0, $blockZ + 1.0, 1.0, 0.0, 0.0, 1.0, 1.0,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, $rightFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, $rightFaceTexture,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, $rightFaceTexture,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, $rightFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, $rightFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, $rightFaceTexture,
                         ]);
-                    }
+                    }                    
 
                     // up face (y+) 2 triangles
                     if ($blockVisibilityUp !== 1) {
                         $floatBuffer->pushArray([
-                            $blockX + -1.0, $blockY + 1.0, $blockZ + -1.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-                            $blockX + -1.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                            $blockX + 1.0, $blockY + 1.0, $blockZ + -1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
-                            $blockX + 1.0, $blockY + 1.0, $blockZ + -1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
-                            $blockX + -1.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                            $blockX + 1.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, $upFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, $upFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, $upFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, $upFaceTexture,
+                            $blockX + 0.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, $upFaceTexture,
+                            $blockX + 1.0, $blockY + 1.0, $blockZ + 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, $upFaceTexture,
                         ]);
                     }
 
                     // down face (y-) 2 triangles
                     if ($blockVisibilityDown !== 1) {
                         $floatBuffer->pushArray([
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + -1.0, 0.0, -1.0, 0.0, 0.0, 0.0,
-                            $blockX + 1.0, $blockY + -1.0, $blockZ + -1.0, 0.0, -1.0, 0.0, 1.0, 0.0,
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + 1.0, 0.0, -1.0, 0.0, 0.0, 1.0,
-                            $blockX + -1.0, $blockY + -1.0, $blockZ + 1.0, 0.0, -1.0, 0.0, 0.0, 1.0,
-                            $blockX + 1.0, $blockY + -1.0, $blockZ + -1.0, 0.0, -1.0, 0.0, 1.0, 0.0,
-                            $blockX + 1.0, $blockY + -1.0, $blockZ + 1.0, 0.0, -1.0, 0.0, 1.0, 1.0,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, $downFaceTexture,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, $downFaceTexture,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, $downFaceTexture,
+                            $blockX + 0.0, $blockY + 0.0, $blockZ + 1.0, 0.0, -1.0, 0.0, 0.0, 1.0, $downFaceTexture,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 0.0, 0.0, -1.0, 0.0, 1.0, 0.0, $downFaceTexture,
+                            $blockX + 1.0, $blockY + 0.0, $blockZ + 1.0, 0.0, -1.0, 0.0, 1.0, 1.0, $downFaceTexture,
                         ]);
                     }
                 }
