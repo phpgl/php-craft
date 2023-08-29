@@ -85,7 +85,7 @@ class RenderingSystem implements SystemInterface
 
         // create an intermediate 
         $sceneRenderTarget = $context->pipeline->createRenderTarget('scene', $cameraData->resolutionX, $cameraData->resolutionY);
-
+        
         // depth
         $sceneDepth = $context->pipeline->createDepthAttachment($sceneRenderTarget);
 

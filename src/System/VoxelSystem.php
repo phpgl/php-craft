@@ -6,6 +6,7 @@ use App\Voxel\ChunkAllocator;
 use GL\Math\{GLM, Quat, Vec2, Vec3};
 use VISU\ECS\EntitiesInterface;
 use VISU\ECS\SystemInterface;
+use VISU\Graphics\Camera;
 use VISU\Graphics\GLState;
 use VISU\Graphics\Rendering\RenderContext;
 
@@ -46,7 +47,13 @@ class VoxelSystem implements SystemInterface
      */
     public function update(EntitiesInterface $entities) : void
     {
-        $this->chunkAllocator->ensureChunksLoaded(0, 0, 0);
+        $cameraEntity = $entities->first(Camera::class);
+
+        $this->chunkAllocator->ensureChunksLoaded(
+            $cameraEntity->transform->position->x, 
+            $cameraEntity->transform->position->y, 
+            $cameraEntity->transform->position->z
+        );
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace App\Voxel;
 
+use App\Debug\DebugTextOverlay;
+use GL\Math\Vec4;
 use VISU\ECS\EntitiesInterface;
 use VISU\Geo\Transform;
 use VISU\Graphics\BasicVertexArray;
@@ -50,7 +52,7 @@ class ChunkRenderer
         // often its more convenient to just create a closure as showcased here
         // to render the background
         $pipeline->addPass(new CallbackPass(
-            'BackgroundPass',
+            'VoxelPass',
             // setup (we need to declare who is reading and writing what)
             function(RenderPass $pass, RenderPipeline $pipeline, PipelineContainer $data) use($renderTarget) {
                 $pipeline->writes($pass, $renderTarget);
@@ -59,6 +61,10 @@ class ChunkRenderer
             function(PipelineContainer $data, PipelineResources $resources) use($renderTarget, $entities)
             {
                 $resources->activateRenderTarget($renderTarget);
+                $rt = $resources->getRenderTarget($renderTarget);
+
+                // simply sky blue
+                $rt->framebuffer()->clearColor = new Vec4(0.5, 0.7, 1.0, 1.0);
 
                 $cameraData = $data->get(CameraData::class);
 
@@ -77,10 +83,15 @@ class ChunkRenderer
                 $chunkAllocator = $entities->getSingleton(ChunkAllocator::class);
                 
                 $chunkVAOs = $chunkAllocator->getChunkVAOs();
+
+                DebugTextOverlay::debugString('Chunks: ' . count($chunkVAOs));
                 
                 foreach ($chunkAllocator->getChunks() as $chunkKey => $chunk) 
                 {
                     $transform = new Transform;
+                    // $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE * 1.1;
+                    // $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE * 1.1;
+                    // $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE * 1.1;
                     $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE;
                     $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE;
                     $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE;

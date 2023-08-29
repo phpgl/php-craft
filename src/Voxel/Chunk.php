@@ -7,13 +7,14 @@ use App\Voxel\Noise\PerlinNoise;
 use GL\Buffer\ByteBuffer;
 use GL\Buffer\FloatBuffer;
 use VISU\Graphics\BasicVertexArray;
+use VISU\OS\Logger;
 
 class Chunk
 {
     public const CHUNK_SIZE = 16;
 
-    private ByteBuffer $blockTypes;
-    private ByteBuffer $blockVisibility;
+    public ByteBuffer $blockTypes;
+    public ByteBuffer $blockVisibility;
 
     const BLOCK_TYPE_AIR = 0;
     const BLOCK_TYPE_DIRT = 1;
@@ -23,7 +24,7 @@ class Chunk
      * Block textures foreach face of each block type
      * @var array
      */
-    private array $blockTextures = [
+    public array $blockTextures = [
         self::BLOCK_TYPE_AIR => [0, 0, 0, 0, 0, 0],
         self::BLOCK_TYPE_DIRT => [2, 2, 2, 2, 2, 2],
         self::BLOCK_TYPE_GRASS => [1, 1, 1, 1, 0, 2],
@@ -48,6 +49,24 @@ class Chunk
             foreach ($textures as $face => $texture) {
                 $this->blockTextures[$blockType][$face] = (float) $texture;
             }
+        }
+
+        $levelPath = VISU_PATH_ROOT . '/level';
+        $levelKey = "{$this->x}_{$this->y}_{$this->z}";
+        if (file_exists("{$levelPath}/{$levelKey}.chunk")) {
+
+            $chunkData = file_get_contents("{$levelPath}/{$levelKey}.chunk");
+
+            $visibilityData = substr($chunkData, 0, self::CHUNK_SIZE ** 3);
+            $typesData = substr($chunkData, self::CHUNK_SIZE ** 3);
+    
+            for ($i = 0; $i < self::CHUNK_SIZE ** 3; $i++) {
+                $this->blockVisibility[$i] = ord($visibilityData[$i]);
+                $this->blockTypes[$i] = ord($typesData[$i]);
+            }
+    
+            Logger::info("Loaded chunk at {$this->x}, {$this->y}, {$this->z}");
+            return;
         }
 
         // randomly enable/disable blocks
@@ -75,6 +94,26 @@ class Chunk
                 }
             }
         }
+
+        // store the chunk on disk
+        $chunkData = "";
+        foreach($this->blockVisibility as $blockVisibility) {
+            $chunkData .= pack('C', $blockVisibility);
+        }
+        foreach($this->blockTypes as $blockType) {
+            $chunkData .= pack('C', $blockType);
+        }
+        file_put_contents("{$levelPath}/{$levelKey}.chunk", $chunkData);
+
+        Logger::info("Generated chunk at {$this->x}, {$this->y}, {$this->z}");
+    }
+
+    /**
+     * Makes all blocks in the chunk visible or invisible
+     */
+    public function setVisibility(bool $visible): void
+    {
+        $this->blockVisibility->fill(self::CHUNK_SIZE ** 3, $visible ? 1 : 0);
     }
 
     public function fillVAOWithGeometry(BasicVertexArray $vao): void
