@@ -84,23 +84,32 @@ class ChunkRenderer
                 
                 $chunkVAOs = $chunkAllocator->getChunkVAOs();
 
-                DebugTextOverlay::debugString('Chunks: ' . count($chunkVAOs));
+                DebugTextOverlay::debugString('Chunks loaded: ' . count($chunkVAOs));
+                $renderCount = 0;
                 
                 foreach ($chunkAllocator->getChunks() as $chunkKey => $chunk) 
                 {
+                    if ($chunk->isInvisible()) {
+                        continue;
+                    }
+
                     $transform = new Transform;
-                    // $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE * 1.1;
-                    // $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE * 1.1;
-                    // $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE * 1.1;
-                    $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE;
-                    $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE;
-                    $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE;
+                    $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE * 1.1;
+                    $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE * 1.1;
+                    $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE * 1.1;
+                    // $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE;
+                    // $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE;
+                    // $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE;
 
                     $shader->setUniformMat4('model', false, $transform->getLocalMatrix());
                     $chunkVAO = $chunkVAOs[$chunkKey];
                     $chunkVAO->bind();
                     $chunkVAO->drawAll();
+
+                    $renderCount++;
                 }
+
+                DebugTextOverlay::debugString('Chunks rendered: ' . $renderCount);
             }
         ));
     }

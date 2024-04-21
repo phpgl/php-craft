@@ -4,25 +4,31 @@ namespace App\Voxel;
 
 use GL\Buffer\ByteBuffer;
 use GL\Buffer\FloatBuffer;
+use VISU\Geo\AABB;
 use VISU\Graphics\BasicVertexArray;
 use VISU\Graphics\GLState;
 
 class ChunkAllocator
 {
     /**
+     * Chunk loader instance.
+     */
+    private ChunkLoader $chunkLoader;
+
+    /**
      * An array of chunks.
      * 
-     * @var array<Chunk>
+     * @var array<string, Chunk>
      */
     private array $chunks = [];
 
     /**
      * An array of vertex array for each chunk.
      * 
-     * @var array<BasicVertexArray|null>
+     * @var array<string, BasicVertexArray|null>
      */
     private array $chunkVAOs = [];
-
+    
     /**
      * Chunk render distance.
      */
@@ -50,9 +56,17 @@ class ChunkAllocator
         private GLState $gl,
     )
     {
+        // create the chunk loader
+        $this->chunkLoader = new ChunkLoader();
+
         // allocate empty chunk
         $this->emptyChunk = new Chunk(0, 0, 0);
         $this->emptyChunk->setVisibility(false);
+
+        // ensure the level directory exists
+        if (!is_dir(PHPCRAFT_LEVELS_PATH)) {
+            mkdir(PHPCRAFT_LEVELS_PATH);
+        }
     }
 
     /**
@@ -205,6 +219,24 @@ class ChunkAllocator
         }
     }
 
+    /**
+     * Use an octree to find all chunks intersecting with the given AABB
+     * 
+     * @param AABB $aabb 
+     * @return array 
+     */
+    public function findIntersectingChunks(AABB $aabb) : array 
+    {
+        $intersectingChunks = [];
+
+        foreach($this->chunks as $key => $chunk) {
+            if ($chunk->aabb->intersects($aabb)) {
+                $intersectingChunks[] = $chunk;
+            }
+        }
+
+        return $intersectingChunks; 
+    }
 
     public function fillVAOWithGeometry(Chunk $chunk, BasicVertexArray $vao): void
     {
@@ -392,5 +424,7 @@ class ChunkAllocator
 
         $vao->bind();
         $vao->upload($floatBuffer);
+
+        // update the bounding
     }
 }
