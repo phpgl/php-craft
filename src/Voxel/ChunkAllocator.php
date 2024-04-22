@@ -23,16 +23,23 @@ class ChunkAllocator
     private array $chunks = [];
 
     /**
-     * An array of vertex array for each chunk.
+     * An array of chunk render data.
      * 
-     * @var array<string, BasicVertexArray|null>
+     * @var array<string, ChunkRenderData>
      */
-    private array $chunkVAOs = [];
+    private array $chunkRenderData = [];
+
+    /**
+     * An array of chunk keys currently in render distance.
+     * 
+     * @var array<string>
+     */
+    private array $chunksInRenderDistance = [];
     
     /**
      * Chunk render distance.
      */
-    private int $renderDistance = 4;
+    public int $renderDistance = 4;
 
     /**
      * Max height of the world.
@@ -50,6 +57,17 @@ class ChunkAllocator
     private Chunk $emptyChunk;
 
     /**
+     * Block textures foreach face of each block type
+     * @var array
+     */
+    public array $blockTextures = [
+        Chunk::BLOCK_TYPE_AIR => [0, 0, 0, 0, 0, 0],
+        Chunk::BLOCK_TYPE_DIRT => [2, 2, 2, 2, 2, 2],
+        Chunk::BLOCK_TYPE_GRASS => [1, 1, 1, 1, 0, 2],
+        Chunk::BLOCK_TYPE_TREE => [4, 4, 4, 4, 4, 4],
+    ];
+
+    /**
      * Constructor
      */
     public function __construct(
@@ -63,10 +81,22 @@ class ChunkAllocator
         $this->emptyChunk = new Chunk(0, 0, 0);
         $this->emptyChunk->setVisibility(false);
 
-        // ensure the level directory exists
-        if (!is_dir(PHPCRAFT_LEVELS_PATH)) {
-            mkdir(PHPCRAFT_LEVELS_PATH);
+        // convert all the block textures to floats
+        // because we will store them in a float buffer 
+        // and we don't want to convert them every time we render
+        foreach ($this->blockTextures as $blockType => $textures) {
+            foreach ($textures as $face => $texture) {
+                $this->blockTextures[$blockType][$face] = (float) $texture;
+            }
         }
+    }
+
+    /**
+     * Returns the count of loaded chunks.
+     */
+    public function getChunkCount(): int
+    {
+        return count($this->chunks);
     }
 
     /**
@@ -79,14 +109,30 @@ class ChunkAllocator
         return $this->chunks;
     }
 
+    /**
+     * Returns the chunk with the given key.
+     */
+    public function getChunk(string $key): ?Chunk
+    {
+        return $this->chunks[$key] ?? null;
+    }
+
     /** 
      * Retuns all loaded chunk vertex arrays.
      * 
-     * @return array<BasicVertexArray>
+     * @return array<string, ChunkRenderData>
      */
-    public function getChunkVAOs(): array
+    public function getToBeRenderedChunks(): array
     {
-        return $this->chunkVAOs;
+        $renderDataList = [];
+
+        foreach ($this->chunksInRenderDistance as $key) {
+            if (isset($this->chunkRenderData[$key])) {
+                $renderDataList[$key] = $this->chunkRenderData[$key];
+            }
+        }
+
+        return $renderDataList;
     }
 
     /**
@@ -115,10 +161,18 @@ class ChunkAllocator
             return $this->chunks[$key];
         }
 
+        // create a new chunk
         $this->chunks[$key] = new Chunk(...explode(':', $key));
-        $this->chunkVAOs[$key] = null;
+        $chunk = $this->chunks[$key];
 
-        return $this->chunks[$key];
+        // create render data for the chunk
+        $renderData = new ChunkRenderData();
+        $this->chunkRenderData[$key] = $renderData;
+
+        // load the chunk data
+        $this->chunkLoader->loadChunkData($chunk);
+
+        return $chunk;
     }
 
     /**
@@ -127,33 +181,20 @@ class ChunkAllocator
     public function unloadChunk(string $key): void
     {
         unset($this->chunks[$key]);
-        unset($this->chunkVAOs[$key]);
+        unset($this->chunkRenderData[$key]);
     }
 
-    /**
-     * Build chunk vertex array
-     */
-    public function buildChunkVAO(string $key) : void
-    {
-        if (!isset($this->chunks[$key])) {
-            return;
-        }
-    }
 
     /**
      * Ensure chunks around the given position are loaded.
      */
-    public function ensureChunksLoaded(float $x, float $y, float $z): void
+    public function ensureChunksLoaded(float $x, float $y, float $z, int $chunkLoadingBudget = 2): void
     {
         $chunkX = (int) floor($x / Chunk::CHUNK_SIZE);
         $chunkY = (int) floor($y / Chunk::CHUNK_SIZE);
         $chunkZ = (int) floor($z / Chunk::CHUNK_SIZE);
 
-        $shouldBeRendered = [];
-
-        // we limit the number of chunks we can load per game tick 
-        // to avoid ugly frame drops
-        $chunkLoadingBudget = 2;
+        $this->chunksInRenderDistance = [];
 
         for ($x = $chunkX - $this->renderDistance; $x <= $chunkX + $this->renderDistance; $x++) {
             for ($y = $chunkY - $this->renderDistance; $y <= $chunkY + $this->renderDistance; $y++) {
@@ -164,8 +205,6 @@ class ChunkAllocator
 
                     $chunkKey = "{$x}:{$y}:{$z}";
 
-                    $shouldBeRendered[$chunkKey] = true;
-
                     if (!isset($this->chunks[$chunkKey])) {
                         if ($chunkLoadingBudget-- <= 0) {
                             continue;
@@ -173,50 +212,53 @@ class ChunkAllocator
                     }
 
                     $this->loadChunk($chunkKey);
+                    $this->chunksInRenderDistance[] = $chunkKey;
                 }
             }
         }
 
-        // unload all chunks outside of the render distance
-        foreach ($this->chunks as $key => $chunk) {
-            if (!isset($shouldBeRendered[$key])) {
-                $this->unloadChunk($key);
+        // ensure VAO geometry is up to date for all chunks in render distance
+        foreach($this->chunksInRenderDistance as $key) {
+            $rd = $this->chunkRenderData[$key];
+
+            if ($rd->vao === null) {
+                $this->fillVAOWithGeometry($this->chunks[$key], $rd);
             }
         }
 
-        // for the optimizer to work properly 
-        // we need to remove all neighboring chunks of chunks that are being 
-        // loaded aka not having a vertex array yet
-        foreach($this->chunks as $key => $chunk) {
-            if ($this->chunkVAOs[$key] === null) {
-                // deloc the neighboring chunks by setting them to null
-                if (isset($this->chunkVAOs[($chunk->x - 1) . ':' . $chunk->y . ':' . $chunk->z])) {
-                    $this->chunkVAOs[($chunk->x - 1) . ':' . $chunk->y . ':' . $chunk->z] = null;
-                }
-                if (isset($this->chunkVAOs[($chunk->x + 1) . ':' . $chunk->y . ':' . $chunk->z])) {
-                    $this->chunkVAOs[($chunk->x + 1) . ':' . $chunk->y . ':' . $chunk->z] = null;
-                }
-                if (isset($this->chunkVAOs[$chunk->x . ':' . ($chunk->y + 1) . ':' . $chunk->z])) {
-                    $this->chunkVAOs[$chunk->x . ':' . ($chunk->y + 1) . ':' . $chunk->z] = null;
-                }
-                if (isset($this->chunkVAOs[$chunk->x . ':' . ($chunk->y - 1) . ':' . $chunk->z])) {
-                    $this->chunkVAOs[$chunk->x . ':' . ($chunk->y - 1) . ':' . $chunk->z] = null;
-                }
-                if (isset($this->chunkVAOs[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z + 1)])) {
-                    $this->chunkVAOs[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z + 1)] = null;
-                }
-                if (isset($this->chunkVAOs[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z - 1)])) {
-                    $this->chunkVAOs[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z - 1)] = null;
-                }
-            }
-        }
-
-        foreach($this->chunks as $key => $chunk) {
-            if ($this->chunkVAOs[$key] === null) {
-                $this->chunkVAOs[$key] = new BasicVertexArray($this->gl, [3, 3, 2, 1]);
-                $this->fillVAOWithGeometry($chunk, $this->chunkVAOs[$key]);
-            }
-        }
+        // // unload all chunks outside of the render distance
+        // foreach ($this->chunks as $key => $chunk) {
+        //     if (!isset($shouldBeRendered[$key])) {
+        //         $this->unloadChunk($key);
+        //     }
+        // }
+  
+        // // for the optimizer to work properly 
+        // // we need to remove all neighboring chunks of chunks that are being 
+        // // loaded aka not having a vertex array yet
+        // foreach($this->chunks as $key => $chunk) {
+        //     if ($this->chunkRenderData[$key]->vao === null) {
+        //         // deloc the neighboring chunks by setting them to null
+        //         if (isset($this->chunkRenderData[($chunk->x - 1) . ':' . $chunk->y . ':' . $chunk->z]->vao)) {
+        //             $this->chunkRenderData[($chunk->x - 1) . ':' . $chunk->y . ':' . $chunk->z]->vao = null;
+        //         }
+        //         if (isset($this->chunkRenderData[($chunk->x + 1) . ':' . $chunk->y . ':' . $chunk->z]->vao)) {
+        //             $this->chunkRenderData[($chunk->x + 1) . ':' . $chunk->y . ':' . $chunk->z]->vao = null;
+        //         }
+        //         if (isset($this->chunkRenderData[$chunk->x . ':' . ($chunk->y + 1) . ':' . $chunk->z]->vao)) {
+        //             $this->chunkRenderData[$chunk->x . ':' . ($chunk->y + 1) . ':' . $chunk->z]->vao = null;
+        //         }
+        //         if (isset($this->chunkRenderData[$chunk->x . ':' . ($chunk->y - 1) . ':' . $chunk->z]->vao)) {
+        //             $this->chunkRenderData[$chunk->x . ':' . ($chunk->y - 1) . ':' . $chunk->z]->vao = null;
+        //         }
+        //         if (isset($this->chunkRenderData[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z + 1)]->vao)) {
+        //             $this->chunkRenderData[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z + 1)]->vao = null;
+        //         }
+        //         if (isset($this->chunkRenderData[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z - 1)]->vao)) {
+        //             $this->chunkRenderData[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z - 1)]->vao = null;
+        //         }
+        //     }
+        // }
     }
 
     /**
@@ -238,7 +280,7 @@ class ChunkAllocator
         return $intersectingChunks; 
     }
 
-    public function fillVAOWithGeometry(Chunk $chunk, BasicVertexArray $vao): void
+    public function fillVAOWithGeometry(Chunk $chunk, ChunkRenderData $rd): void
     {
         $floatBuffer = new FloatBuffer();
 
@@ -249,6 +291,17 @@ class ChunkAllocator
         $downChunk = $this->chunks[$chunk->x . ':' . ($chunk->y - 1) . ':' . $chunk->z] ?? null;
         $frontChunk = $this->chunks[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z + 1)] ?? null;
         $backChunk = $this->chunks[$chunk->x . ':' . $chunk->y . ':' . ($chunk->z - 1)] ?? null;
+
+        // only fill chunks that have all neighbors loaded
+        if ($leftChunk === null || $rightChunk === null || $upChunk === null || $downChunk === null || $frontChunk === null || $backChunk === null) {
+            return;
+        }
+
+        // create the VAO if it doesn't exist yet
+        if ($rd->vao === null) {
+            // initalize a VAO for the chunk
+            $rd->vao = new BasicVertexArray($this->gl, [3, 3, 2, 1]);
+        }
 
         // replace null chunks with our empty chunk fallback
         $leftChunk ??= $this->emptyChunk;
@@ -311,12 +364,12 @@ class ChunkAllocator
                     $blockVisibilityUp = $chunk->blockVisibility[$x + ($y + 1) * Chunk::CHUNK_SIZE + $z * Chunk::CHUNK_SIZE ** 2];
                     $blockVisibilityDown = $chunk->blockVisibility[$x + ($y - 1) * Chunk::CHUNK_SIZE + $z * Chunk::CHUNK_SIZE ** 2];
 
-                    $frontFaceTexture = $chunk->blockTextures[$blockType][0];
-                    $backFaceTexture = $chunk->blockTextures[$blockType][1];
-                    $leftFaceTexture = $chunk->blockTextures[$blockType][2];
-                    $rightFaceTexture = $chunk->blockTextures[$blockType][3];
-                    $upFaceTexture = $chunk->blockTextures[$blockType][4];
-                    $downFaceTexture = $chunk->blockTextures[$blockType][5];
+                    $frontFaceTexture = $this->blockTextures[$blockType][0];
+                    $backFaceTexture = $this->blockTextures[$blockType][1];
+                    $leftFaceTexture = $this->blockTextures[$blockType][2];
+                    $rightFaceTexture = $this->blockTextures[$blockType][3];
+                    $upFaceTexture = $this->blockTextures[$blockType][4];
+                    $downFaceTexture = $this->blockTextures[$blockType][5];
 
 
                     // special cases for edges
@@ -422,9 +475,10 @@ class ChunkAllocator
             }
         }
 
-        $vao->bind();
-        $vao->upload($floatBuffer);
+        $rd->vao->bind();
+        $rd->vao->upload($floatBuffer);
 
-        // update the bounding
+        // if no geometry was uploaded we can skip rendering this chunk
+        $rd->hasNoVisibleBlocks = $floatBuffer->size() === 0;
     }
 }

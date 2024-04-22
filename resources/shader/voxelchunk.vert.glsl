@@ -16,7 +16,7 @@ out float v_blocktype;
 
 void main()
 {
-    v_position = position;
+    v_position = (model * vec4(position, 1.0)).xyz;
     v_normal = normal;
     v_uv = uv;
     v_blocktype = blocktype;

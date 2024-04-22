@@ -6,6 +6,17 @@ use VISU\OS\Logger;
 
 class ChunkLoader
 {  
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        // ensure the level directory exists
+        if (!is_dir(PHPCRAFT_LEVELS_PATH)) {
+            mkdir(PHPCRAFT_LEVELS_PATH);
+        }
+    }
+
    /**
     * Generates procedural chunk data for a given chunk.
     */
@@ -27,6 +38,12 @@ class ChunkLoader
                     $heightAbsolute = $height * 16 * 2;
 
                     $chunk->blockVisibility[$x + $y * Chunk::CHUNK_SIZE + $z * Chunk::CHUNK_SIZE ** 2] = $absoluteY < $heightAbsolute ? 1 : 0;
+
+                    // add some caves by making some blocks invisible underground
+                    $v = \GL\Noise::perlin($absoluteX * 0.05, $absoluteY * 0.05, $absoluteZ * 0.05);
+                    if ($v > 0.3) {
+                        $chunk->blockVisibility[$x + $y * Chunk::CHUNK_SIZE + $z * Chunk::CHUNK_SIZE ** 2] = 0;
+                    }
                 }
             }
         }

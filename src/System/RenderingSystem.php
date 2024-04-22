@@ -2,6 +2,9 @@
 
 namespace App\System;
 
+use App\Component\SunComponent;
+use App\Renderer\DistanceFogRenderer;
+use App\Renderer\SkyboxRenderer;
 use App\Voxel\ChunkRenderer;
 use GL\Math\{GLM, Quat, Vec2, Vec3};
 use VISU\ECS\EntitiesInterface;
@@ -29,6 +32,16 @@ class RenderingSystem implements SystemInterface
     private ChunkRenderer $voxelRenderer;
 
     /**
+     * Skybox Renderer
+     */
+    private SkyboxRenderer $skyboxRenderer;
+
+    /**
+     * Fog Renderer
+     */
+    private DistanceFogRenderer $fogRenderer;
+
+    /**
      * Constructor
      */
     public function __construct(
@@ -38,6 +51,8 @@ class RenderingSystem implements SystemInterface
     {
         $this->fullscreenRenderer = new FullscreenTextureRenderer($this->gl);
         $this->voxelRenderer = new ChunkRenderer($this->gl, $this->shaders);
+        $this->skyboxRenderer = new SkyboxRenderer($this->gl, $this->shaders);
+        $this->fogRenderer = new DistanceFogRenderer($this->gl, $this->shaders);
     }
     
     /**
@@ -48,6 +63,10 @@ class RenderingSystem implements SystemInterface
     public function register(EntitiesInterface $entities) : void
     {
         $entities->registerComponent(Transform::class);
+        $entities->registerComponent(SunComponent::class);
+
+        // create a global sun entity
+        $entities->setSingleton(new SunComponent);
     }
 
     /**
@@ -83,15 +102,25 @@ class RenderingSystem implements SystemInterface
         // fetch the camera data
         $cameraData = $context->data->get(CameraData::class);
 
+        // attach scene related data
+        $context->data->set($entities->getSingleton(SunComponent::class));
+
         // create an intermediate 
         $sceneRenderTarget = $context->pipeline->createRenderTarget('scene', $cameraData->resolutionX, $cameraData->resolutionY);
         
         // depth
         $sceneDepth = $context->pipeline->createDepthAttachment($sceneRenderTarget);
 
+        // scene color
         $sceneColorOptions = new TextureOptions;
         $sceneColorOptions->internalFormat = GL_RGB;
         $sceneColor = $context->pipeline->createColorAttachment($sceneRenderTarget, 'sceneColor', $sceneColorOptions);
+
+        // scene position
+        $spaceTextureOptions = new TextureOptions;
+        $spaceTextureOptions->internalFormat = GL_RGB32F;
+        $spaceTextureOptions->generateMipmaps = false;
+        $scenePosition = $context->pipeline->createColorAttachment($sceneRenderTarget, 'scenePosition', $spaceTextureOptions);
 
         // clear the scene render target
         $context->pipeline->addPass(new ClearPass($sceneRenderTarget));
@@ -99,7 +128,17 @@ class RenderingSystem implements SystemInterface
         // render the chunks
         $this->voxelRenderer->attachPass($context->pipeline, $sceneRenderTarget, $entities);
 
+        // render the skybox
+        $this->skyboxRenderer->attachPass($context->pipeline, $sceneRenderTarget);
+
+        // create an intermediate for post processing
+        $postProcessRenderTarget = $context->pipeline->createRenderTarget('postProcess', $cameraData->resolutionX, $cameraData->resolutionY);
+        $postProcessColor = $context->pipeline->createColorAttachment($postProcessRenderTarget, 'postProcessColor', $sceneColorOptions);
+
+        // render the fog
+        $this->fogRenderer->attachPass($context->pipeline, $postProcessRenderTarget, $sceneColor, $scenePosition);
+
         // add a pass that renders the scene render target to the backbuffer
-        $this->fullscreenRenderer->attachPass($context->pipeline, $backbuffer, $sceneColor);
+        $this->fullscreenRenderer->attachPass($context->pipeline, $backbuffer, $postProcessColor);
     }
 }

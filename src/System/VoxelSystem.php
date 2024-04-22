@@ -29,6 +29,11 @@ class VoxelSystem implements SystemInterface
     public function register(EntitiesInterface $entities) : void
     {
         $entities->setSingleton($this->chunkAllocator);
+
+        // load the first 2k chunks
+        // $this->chunkAllocator->renderDistance = 8;
+        // $this->chunkAllocator->ensureChunksLoaded(0, 0, 0, 2048);
+        // $this->chunkAllocator->renderDistance = 4;
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Signals\SwitchToSceneSignal;
 use GameContainer;
 use App\System\CameraSystem;
 use App\System\RenderingSystem;
+use App\System\TimeOfDaySystem;
 use App\System\VisuPhpantSystem;
 use App\System\VoxelSystem;
 use VISU\Graphics\Rendering\Pass\BackbufferData;
@@ -39,14 +40,14 @@ class GameViewScene extends BaseScene
     private RenderingSystem $renderingSystem;
 
     /**
-     * system: Phpants
-     */
-    private VisuPhpantSystem $visuPhpantSystem;
-
-    /**
      * system: Voxel
      */
     private VoxelSystem $voxelSystem;
+
+    /**
+     * system: Time of day
+     */
+    private TimeOfDaySystem $timeOfDaySystem;
 
     /**
      * Function ID for keyboard handler
@@ -89,15 +90,14 @@ class GameViewScene extends BaseScene
             $this->container->resolveShaders()
         );
 
-        // the thing moving the flying phpants
-        $this->visuPhpantSystem = new VisuPhpantSystem;
+        $this->timeOfDaySystem = new TimeOfDaySystem();
 
         // bind all systems to the scene itself
         $this->bindSystems([
             $this->voxelSystem,
             $this->cameraSystem,
             $this->renderingSystem,
-            $this->visuPhpantSystem,
+            $this->timeOfDaySystem,
         ]);
     }
 
@@ -163,7 +163,7 @@ class GameViewScene extends BaseScene
     public function update(): void
     {
         $this->cameraSystem->update($this->entities);
-        $this->visuPhpantSystem->update($this->entities);
+        $this->timeOfDaySystem->update($this->entities);
 
         $this->voxelSystem->update($this->entities);
     }

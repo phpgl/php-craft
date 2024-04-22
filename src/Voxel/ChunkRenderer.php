@@ -2,7 +2,9 @@
 
 namespace App\Voxel;
 
+use App\Component\SunComponent;
 use App\Debug\DebugTextOverlay;
+use GL\Math\Vec3;
 use GL\Math\Vec4;
 use VISU\ECS\EntitiesInterface;
 use VISU\Geo\Transform;
@@ -12,6 +14,7 @@ use VISU\Graphics\Rendering\Pass\CallbackPass;
 use VISU\Graphics\Rendering\Pass\CameraData;
 use VISU\Graphics\Rendering\PipelineContainer;
 use VISU\Graphics\Rendering\PipelineResources;
+use VISU\Graphics\Rendering\Renderer\Debug3DRenderer;
 use VISU\Graphics\Rendering\RenderPass;
 use VISU\Graphics\Rendering\RenderPipeline;
 use VISU\Graphics\Rendering\Resource\RenderTargetResource;
@@ -63,10 +66,8 @@ class ChunkRenderer
                 $resources->activateRenderTarget($renderTarget);
                 $rt = $resources->getRenderTarget($renderTarget);
 
-                // simply sky blue
-                $rt->framebuffer()->clearColor = new Vec4(0.5, 0.7, 1.0, 1.0);
-
                 $cameraData = $data->get(CameraData::class);
+                $sun = $data->get(SunComponent::class);
 
                 glEnable(GL_DEPTH_TEST);
                 glEnable(GL_CULL_FACE);
@@ -76,33 +77,49 @@ class ChunkRenderer
                 $shader->use();
                 $shader->setUniformMat4('projection', false, $cameraData->projection);
                 $shader->setUniformMat4('view', false, $cameraData->view);
+                $shader->setUniformVec3('u_sun.diffuse', $sun->diffuse);
+                $shader->setUniformVec3('u_sun.direction', $sun->direction);
 
                 $this->texture->bind(GL_TEXTURE0);
                 $shader->setUniform1i('u_texture', 0);
 
                 $chunkAllocator = $entities->getSingleton(ChunkAllocator::class);
                 
-                $chunkVAOs = $chunkAllocator->getChunkVAOs();
+                $chunkRenderData = $chunkAllocator->getToBeRenderedChunks();
 
-                DebugTextOverlay::debugString('Chunks loaded: ' . count($chunkVAOs));
+                DebugTextOverlay::debugString('Chunks loaded: ' . $chunkAllocator->getChunkCount());
+                DebugTextOverlay::debugString('Chunks in render distance: ' . count($chunkRenderData));
                 $renderCount = 0;
                 
-                foreach ($chunkAllocator->getChunks() as $chunkKey => $chunk) 
+                foreach ($chunkRenderData as $chunkKey => $renderData) 
                 {
-                    if ($chunk->isInvisible()) {
+                    if (!$chunk = $chunkAllocator->getChunk($chunkKey)) {
                         continue;
                     }
 
+                    if ($renderData->hasNoVisibleBlocks) {
+                        continue;
+                    }
+
+                    if ($cameraData->frustum->isAABBInView($chunk->aabb) === false) {
+                        continue;
+                    }
+
+                    if ($chunkKey === '0:-2:0') {
+                        Debug3DRenderer::aabb(new Vec3(), $chunk->aabb->min, $chunk->aabb->max, new Vec3(1, 0, 0));
+                    }
+
+
                     $transform = new Transform;
-                    $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE * 1.1;
-                    $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE * 1.1;
-                    $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE * 1.1;
-                    // $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE;
-                    // $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE;
-                    // $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE;
+                    // $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE * 1.1;
+                    // $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE * 1.1;
+                    // $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE * 1.1;
+                    $transform->position->x = $chunk->x * Chunk::CHUNK_SIZE;
+                    $transform->position->y = $chunk->y * Chunk::CHUNK_SIZE;
+                    $transform->position->z = $chunk->z * Chunk::CHUNK_SIZE;
 
                     $shader->setUniformMat4('model', false, $transform->getLocalMatrix());
-                    $chunkVAO = $chunkVAOs[$chunkKey];
+                    $chunkVAO = $renderData->vao;
                     $chunkVAO->bind();
                     $chunkVAO->drawAll();
 
