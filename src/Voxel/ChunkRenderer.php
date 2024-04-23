@@ -101,7 +101,8 @@ class ChunkRenderer
                         continue;
                     }
 
-                    if ($cameraData->frustum->isAABBInView($chunk->aabb) === false) {
+                    if (!$cameraData->frustum->isSphereInView($chunk->aabb->getCenter(), $chunk->aabb->width() * 0.5)) {
+                        if ($showFrustum) Debug3DRenderer::aabb(new Vec3(), $chunk->aabb->min + new Vec3(5), $chunk->aabb->max - new Vec3(5), new Vec3(1, 0, 0));
                         continue;
                     }
 

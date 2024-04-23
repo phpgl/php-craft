@@ -282,8 +282,6 @@ class ChunkAllocator
 
     public function fillVAOWithGeometry(Chunk $chunk, ChunkRenderData $rd): void
     {
-        $floatBuffer = new FloatBuffer();
-
         // load the neighboring chunks 
         $leftChunk = $this->chunks[($chunk->x - 1) . ':' . $chunk->y . ':' . $chunk->z] ?? null;
         $rightChunk = $this->chunks[($chunk->x + 1) . ':' . $chunk->y . ':' . $chunk->z] ?? null;
@@ -311,6 +309,7 @@ class ChunkAllocator
         $frontChunk ??= $this->emptyChunk;
         $backChunk ??= $this->emptyChunk;
 
+        $floatBuffer = new FloatBuffer();
 
         // Unfolded cube
         //         *---*       F = Front
