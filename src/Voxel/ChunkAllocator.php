@@ -39,7 +39,7 @@ class ChunkAllocator
     /**
      * Chunk render distance.
      */
-    public int $renderDistance = 8;
+    public int $renderDistance = 4;
 
     /**
      * Max height of the world.

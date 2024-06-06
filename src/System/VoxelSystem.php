@@ -34,7 +34,7 @@ class VoxelSystem implements SystemInterface
     //     $this->chunkAllocator->renderDistance = 8;
     //     $this->chunkAllocator->ensureChunksLoaded(0, 0, 0, 4096);
     //     $this->chunkAllocator->renderDistance = 8;
-        $this->chunkAllocator->renderDistance = 8;
+        $this->chunkAllocator->renderDistance = 4;
         $this->chunkAllocator->ensureChunksLoaded(0, 0, 0, 4096);
      }
 
