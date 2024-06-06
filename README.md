@@ -21,12 +21,17 @@ Culling
 
 This is a **Work in Progress** but it runs.
 
+## Installation
+
+ * Make sure you install the latest "master" version of [PHP-GLFW](https://github.com/mario-deluna/php-glfw)
+ * Run `composer install` to install the dependencies
+
 ## Usage 
 
 After the installation open the projects directory with a command line and run:
 
 ```
-./bin/play
+php ./bin/play
 ```
 
 
