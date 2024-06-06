@@ -16,19 +16,10 @@
         }
     },
     "repositories": [
-        {
-            "type": "path",
-            "url": "../visu"
-        },
-        {
-            "type": "path",
-            "url": "../visu-bundler"
-        }
     ],
     "require": {
         "phpgl/ide-stubs": "dev-main",
-        "phpgl/visu": "@dev",
-        "phpgl/visu-bundler": "@dev"
+        "phpgl/visu": "@dev"
     },
     "scripts": {
         "post-root-package-install": [

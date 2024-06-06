@@ -10,7 +10,7 @@
 /**
  * Import Plugins & Extensions
  */
-import phpgl/visu-bundler
+//import phpgl/visu-bundler
 
 /**
  * Configuration

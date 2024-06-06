@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e3a8cff921864010c20d08b64e3c8fe8",
+    "content-hash": "56d2e5faa104be05363930e5b64409b8",
     "packages": [
         {
             "name": "clancats/container",
-            "version": "v1.3.5",
+            "version": "v1.3.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ClanCats/Container.git",
-                "reference": "f203ed28e66e94c4094b4852af44986e0f5153fa"
+                "reference": "60d650e6fec6b227087ac386edb7eb2f43ddcaeb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ClanCats/Container/zipball/f203ed28e66e94c4094b4852af44986e0f5153fa",
-                "reference": "f203ed28e66e94c4094b4852af44986e0f5153fa",
+                "url": "https://api.github.com/repos/ClanCats/Container/zipball/60d650e6fec6b227087ac386edb7eb2f43ddcaeb",
+                "reference": "60d650e6fec6b227087ac386edb7eb2f43ddcaeb",
                 "shasum": ""
             },
             "require": {
@@ -42,9 +42,9 @@
             "description": "ClanCats IoC Container.",
             "support": {
                 "issues": "https://github.com/ClanCats/Container/issues",
-                "source": "https://github.com/ClanCats/Container/tree/v1.3.5"
+                "source": "https://github.com/ClanCats/Container/tree/v1.3.6"
             },
-            "time": "2023-07-21T11:30:02+00:00"
+            "time": "2024-03-07T13:59:17+00:00"
         },
         {
             "name": "league/climate",
@@ -117,12 +117,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpgl/ide-stubs.git",
-                "reference": "39abde3eb8ca023a71f93b5e90bec2f4e9c6f5ac"
+                "reference": "3c7bef7a44bbbe236f60b77843a4142d9592099a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpgl/ide-stubs/zipball/39abde3eb8ca023a71f93b5e90bec2f4e9c6f5ac",
-                "reference": "39abde3eb8ca023a71f93b5e90bec2f4e9c6f5ac",
+                "url": "https://api.github.com/repos/phpgl/ide-stubs/zipball/3c7bef7a44bbbe236f60b77843a4142d9592099a",
+                "reference": "3c7bef7a44bbbe236f60b77843a4142d9592099a",
                 "shasum": ""
             },
             "require": {
@@ -160,15 +160,21 @@
                 "issues": "https://github.com/phpgl/ide-stubs/issues",
                 "source": "https://github.com/phpgl/ide-stubs/tree/main"
             },
-            "time": "2023-03-14T23:03:57+00:00"
+            "time": "2024-04-07T20:25:36+00:00"
         },
         {
             "name": "phpgl/visu",
             "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/phpgl/visu.git",
+                "reference": "9ca82763255fc0c00e9f0ef400e5a57ac5f04b70"
+            },
             "dist": {
-                "type": "path",
-                "url": "../visu",
-                "reference": "9265554e1132493f28034642e5db4d40a442e022"
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpgl/visu/zipball/9ca82763255fc0c00e9f0ef400e5a57ac5f04b70",
+                "reference": "9ca82763255fc0c00e9f0ef400e5a57ac5f04b70",
+                "shasum": ""
             },
             "require": {
                 "clancats/container": "^1.3",
@@ -181,6 +187,10 @@
                 "phpstan/phpstan": "^1.8",
                 "phpunit/phpunit": "^9.5"
             },
+            "default-branch": true,
+            "bin": [
+                "bin/visu"
+            ],
             "type": "library",
             "extra": {
                 "container": {
@@ -192,69 +202,16 @@
                     "VISU\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "VISU\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "post-autoload-dump": [
-                    "ClanCats\\Container\\ComposerContainerFileLoader::generateMap"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "A Modern OpenGL Framework for PHP, ex php-game-framework.",
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
-            "name": "phpgl/visu-bundler",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../visu-bundler",
-                "reference": "abe99c65a56fbd4c454ed3122f5077cbef25fd6e"
+            "support": {
+                "issues": "https://github.com/phpgl/visu/issues",
+                "source": "https://github.com/phpgl/visu/tree/master"
             },
-            "require": {
-                "php": ">=8.1",
-                "phpgl/visu": "@dev"
-            },
-            "require-dev": {
-                "phpgl/ide-stubs": "dev-main",
-                "phpstan/phpstan": "^1.8",
-                "phpunit/phpunit": "^9.5"
-            },
-            "type": "library",
-            "extra": {
-                "container": {
-                    "@main": "bundler.ctn"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "VISU\\Bundler\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "VISU\\Bundler\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "post-autoload-dump": [
-                    "ClanCats\\Container\\ComposerContainerFileLoader::generateMap"
-                ]
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "A simple application bundler to create portable php applications.",
-            "transport-options": {
-                "relative": true
-            }
+            "time": "2024-06-06T09:58:52+00:00"
         },
         {
             "name": "psr/log",
@@ -367,8 +324,7 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "phpgl/ide-stubs": 20,
-        "phpgl/visu": 20,
-        "phpgl/visu-bundler": 20
+        "phpgl/visu": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,
