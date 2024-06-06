@@ -4,9 +4,11 @@ namespace App\Voxel;
 
 use App\Component\SunComponent;
 use App\Debug\DebugTextOverlay;
+use GL\Math\Mat4;
 use GL\Math\Vec3;
 use GL\Math\Vec4;
 use VISU\ECS\EntitiesInterface;
+use VISU\Geo\Frustum;
 use VISU\Geo\Transform;
 use VISU\Graphics\BasicVertexArray;
 use VISU\Graphics\GLState;
@@ -25,6 +27,7 @@ use VISU\Graphics\TextureOptions;
 class ChunkRenderer
 {
     private Texture $texture;
+    private ?Frustum $frustum = null;
 
     public function __construct(
         private GLState $gl,
@@ -90,7 +93,12 @@ class ChunkRenderer
                 DebugTextOverlay::debugString('Chunks loaded: ' . $chunkAllocator->getChunkCount());
                 DebugTextOverlay::debugString('Chunks in render distance: ' . count($chunkRenderData));
                 $renderCount = 0;
-                
+
+
+                global $showFrustum;
+
+                if ($showFrustum) Debug3DRenderer::frustum($cameraData->inverseProjectionView, new Vec3(1, 0, 0));
+
                 foreach ($chunkRenderData as $chunkKey => $renderData) 
                 {
                     if (!$chunk = $chunkAllocator->getChunk($chunkKey)) {
@@ -106,9 +114,8 @@ class ChunkRenderer
                         continue;
                     }
 
-                    if ($chunkKey === '0:-2:0') {
-                        Debug3DRenderer::aabb(new Vec3(), $chunk->aabb->min, $chunk->aabb->max, new Vec3(1, 0, 0));
-                    }
+                    if ($showFrustum) Debug3DRenderer::aabb(new Vec3(), $chunk->aabb->min + new Vec3(5), $chunk->aabb->max - new Vec3(5), new Vec3(0, 1, 0));
+
 
 
                     $transform = new Transform;

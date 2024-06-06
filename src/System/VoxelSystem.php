@@ -31,10 +31,12 @@ class VoxelSystem implements SystemInterface
         $entities->setSingleton($this->chunkAllocator);
 
         // load the first 2k chunks
-        // $this->chunkAllocator->renderDistance = 8;
-        // $this->chunkAllocator->ensureChunksLoaded(0, 0, 0, 2048);
-        // $this->chunkAllocator->renderDistance = 4;
-    }
+    //     $this->chunkAllocator->renderDistance = 8;
+    //     $this->chunkAllocator->ensureChunksLoaded(0, 0, 0, 4096);
+    //     $this->chunkAllocator->renderDistance = 8;
+        $this->chunkAllocator->renderDistance = 8;
+        $this->chunkAllocator->ensureChunksLoaded(0, 0, 0, 4096);
+     }
 
     /**
      * Unregisters the system, this is where you can handle any cleanup.

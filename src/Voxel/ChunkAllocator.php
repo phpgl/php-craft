@@ -39,17 +39,17 @@ class ChunkAllocator
     /**
      * Chunk render distance.
      */
-    public int $renderDistance = 4;
+    public int $renderDistance = 8;
 
     /**
      * Max height of the world.
      */
-    private int $maxHeight = 128;
+    private int $maxHeight = 64;
 
     /**
      * Min height of the world.
      */
-    private int $minHeight = -128;
+    private int $minHeight = -64;
 
     /**
      * Empty chunk fallback.

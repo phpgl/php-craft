@@ -34,8 +34,9 @@ class ChunkLoader
 
                     $chunk->blockTypes[$x + $y * Chunk::CHUNK_SIZE + $z * Chunk::CHUNK_SIZE ** 2] = (int) mt_rand(1, 3);
 
-                    $height = \GL\Noise::fbm($absoluteX * 0.01 + 0.5, $absoluteZ * 0.01 + 0.5, 0.0);
-                    $heightAbsolute = $height * 16 * 2;
+                    $scale = 0.005;
+                    $height = \GL\Noise::fbm($absoluteX * $scale + 0.5, $absoluteZ * $scale + 0.5, 0.0);
+                    $heightAbsolute = $height * 16;
 
                     $chunk->blockVisibility[$x + $y * Chunk::CHUNK_SIZE + $z * Chunk::CHUNK_SIZE ** 2] = $absoluteY < $heightAbsolute ? 1 : 0;
 
